@@ -8,7 +8,7 @@ import { ie, ie_version } from "../util/browser"
 import { elt, removeChildren, range, removeChildrenAndAdd } from "../util/dom"
 import { e_target } from "../util/event"
 import { hasBadZoomedRects } from "../util/feature_detection"
-import { countColumn, findFirst, isExtendingChar, scrollerGap } from "../util/misc"
+import { countColumn, findFirst, findFirstCmp, isExtendingChar, scrollerGap } from "../util/misc"
 import { updateLineForChanges } from "../display/update_line"
 
 import { widgetHeight } from "./widgets"
@@ -433,14 +433,14 @@ function coordsCharInner(cm, lineObj, lineNo, x, y) {
   y -= heightAtLine(lineObj)
   let begin = 0, end = lineObj.text.length - 1
   let preparedMeasure = prepareMeasureForLine(cm, lineObj)
-  if (cm.options.lineWrapping) {
-    let measure = ch => intoCoordSystem(cm, lineObj, measureCharPrepared(cm, preparedMeasure, ch), "line")
-    begin = findFirst(ch => measure(ch).bottom < y, end, begin - 1) + 1
-    end = findFirst(ch => measure(ch).top > y, begin, end + 1) - 1
-  }
   let pos
   let order = getOrder(lineObj)
   if (order) {
+    if (cm.options.lineWrapping) {
+      let measure = ch => intoCoordSystem(cm, lineObj, measureCharPrepared(cm, preparedMeasure, ch), "line")
+      begin = findFirst(ch => measure(ch).bottom < y, end, begin - 1) + 1
+      end = findFirst(ch => measure(ch).top > y, begin, end + 1) - 1
+    }
     if (end == lineObj.text.length - 1) ++end
     pos = new Pos(lineNo, begin)
     let beginLeft = cursorCoords(cm, pos, "line", lineObj, preparedMeasure).left
@@ -459,9 +459,11 @@ function coordsCharInner(cm, lineObj, lineNo, x, y) {
     // moveVisually has the nice side effect of skipping extending chars and setting sticky
     if (Math.abs(diff) > Math.abs(prevDiff)) pos = moveVisually(cm, lineObj, pos, -dir)
   } else {
-    let ch = findFirst(ch => {
+    let ch = findFirstCmp(ch => {
       let box = measureCharPrepared(cm, preparedMeasure, ch)
-      return x - box.right < box.left - x
+      if (box.top > y) return 1
+      else if (box.bottom < y) return -1
+      else return (x - box.right < box.left - x) ? 0 : (box.right > y ? 1 : -1)
     }, begin, end + 1)
     while (isExtendingChar(lineObj.text.charAt(ch))) ++ch
     pos = new Pos(lineNo, ch, (ch == end + 1) ? "before" : "after")

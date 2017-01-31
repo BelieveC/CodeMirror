@@ -135,3 +135,17 @@ export function findFirst(pred, from, to) {
     else from = mid
   }
 }
+
+// Returns the value from the range [`from`; `to`] for which `pred` returns 0
+// and is closest to `from`. Assumes that a value for which `pred` returns -1
+// is strictly closer to `from` than values for which `pred` returns 0 or 1;
+// likewise for 1.
+export function findFirstCmp(pred, from, to) {
+  for (;;) {
+    if (Math.abs(from - to) <= 1) return (pred(from) == 0) ? from : (pred(to) == 0 ? to : null)
+    let mid = Math.floor((from + to) / 2)
+    let pred_mid = pred(mid)
+    if (pred_mid >= 0) to = mid
+    else from = mid
+  }
+}
